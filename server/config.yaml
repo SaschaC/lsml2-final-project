@@ -1,0 +1,15 @@
+upload_folder: /uploads
+
+mongo_configs:
+  mongo_host: mongo_db
+  mongo_port: 27017
+  mongo_db: brats
+  mongo_collection: brats
+  mongo_user: brats
+  mongo_password: brats
+
+triton_configs:
+  triton_host: triton
+  triton_port: 8001
+  triton_model_name: brats_onnx
+  triton_model_version: 1

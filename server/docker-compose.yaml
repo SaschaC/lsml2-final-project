@@ -1,0 +1,56 @@
+# docker-compose for server and client for brats2021 in multiple containers
+version: '3.7'
+
+services:
+  triton:
+    image: nvcr.io/nvidia/tritonserver:21.03-py3
+    container_name: triton
+    command: tritonserver --model-repository=/models
+    restart: always
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    volumes:
+      - ../triton_models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  server:
+    image: brats2021_server
+    volumes:
+      - ./data:/uploads
+      - ./config.yaml:/root/src/config.yaml
+    ports:
+      - 5000:5000
+    command: uwsgi --http 0.0.0.0:5000 --module serve:app --http-timeout 600 --processes 4 --threads 8 --buffer-size 32768
+    # wait for triton to be ready
+    depends_on:
+      triton:
+        condition: service_healthy
+    environment:
+      - SECRET_KEY=secret
+      - TOKEN_EXPIRE_TIME=3600
+  # client:
+  #   image: brats2021_client
+  #   volumes:
+  #     - ./data:/data
+  #   command: npm start  
+
+  mongo_db:
+    image: mongo
+    volumes:
+      - ./mongo:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=brats
+      - MONGO_INITDB_ROOT_PASSWORD=brats
+    ports:
+      - 58892:27017
+    healthcheck:
+        test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+        interval: 10s
+        timeout: 10s
+        retries: 3
+        start_period: 10s
